@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/TheCacophonyProject/go-cptv/cptvframe"
-	"github.com/TheCacophonyProject/lepton3"
 	"github.com/TheCacophonyProject/window"
 
 	config "github.com/TheCacophonyProject/go-config"
@@ -81,9 +80,9 @@ type RecordingListener interface {
 	RecordingEnded()
 }
 
-func (mp *MotionProcessor) Process(rawFrame *lepton3.RawFrame) {
+func (mp *MotionProcessor) Process(rawFrame []byte) {
 	frame := mp.frameLoop.Current()
-	rawFrame.ToFrame(frame)
+	//rawFrame.ToFrame(frame)
 	mp.process(frame)
 }
 

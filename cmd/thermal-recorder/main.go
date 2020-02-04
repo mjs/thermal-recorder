@@ -19,18 +19,19 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"strings"
 
+	"github.com/TheCacophonyProject/go-cptv/cptvframe"
 	arg "github.com/alexflint/go-arg"
 	"gopkg.in/yaml.v1"
 	"periph.io/x/periph/host"
 
 	config "github.com/TheCacophonyProject/go-config"
-	"github.com/TheCacophonyProject/lepton3"
 	"github.com/TheCacophonyProject/thermal-recorder/headers"
 	"github.com/TheCacophonyProject/thermal-recorder/motion"
 	"github.com/TheCacophonyProject/thermal-recorder/recorder"
@@ -145,6 +146,8 @@ type HeaderInfo struct {
 	brand     string
 }
 
+// XXX remove these methods and just export the fields
+
 func (h *HeaderInfo) ResX() int {
 	return h.resX
 }
@@ -153,6 +156,10 @@ func (h *HeaderInfo) ResY() int {
 }
 func (h *HeaderInfo) FPS() int {
 	return h.fps
+}
+
+func (h *HeaderInfo) FrameSize() int {
+	return h.framesize
 }
 
 func NewHeader(headerInfo map[string]interface{}) *HeaderInfo {
@@ -191,6 +198,12 @@ func handleConn(conn net.Conn, conf *Config) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("header: %+v\n", header)
+
+	if header.brand != "flir" && header.model != "boson" {
+		panic("currently hacked for Boson only")
+	}
+
 	cptvRecorder := NewCPTVFileRecorder(conf, header, header.brand, header.model)
 	defer cptvRecorder.Stop()
 	var recorder recorder.Recorder = cptvRecorder
@@ -207,7 +220,10 @@ func handleConn(conn net.Conn, conf *Config) error {
 	frameLogIntervalFirstMin *= header.FPS()
 	frameLogInterval *= header.FPS()
 
-	rawFrame := new(lepton3.RawFrame)
+	rawFrame := make([]byte, header.FrameSize())
+	tmpFrame := cptvframe.NewFrame(cptvframe.CameraSpec{
+		// XXX
+	})
 	for {
 		_, err := io.ReadFull(reader, rawFrame[:])
 		if err != nil {
@@ -220,7 +236,11 @@ func handleConn(conn net.Conn, conf *Config) error {
 			log.Printf("%d frames for this connection", totalFrames)
 		}
 
-		processor.Process(rawFrame)
+		convertBosonFrame(rawFrame, &tmpFrame)
+
+		fmt.Println(tmpFrame.Pix[10][10])
+
+		//processor.Process(rawFrame)
 	}
 }
 
